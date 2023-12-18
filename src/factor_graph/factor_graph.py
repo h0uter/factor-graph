@@ -12,7 +12,7 @@ from factor_graph.variable_node import VariableNode
 class FactorGraph:
     def __init__(self, gbp_settings: GBPSettings = GBPSettings()) -> None:
         self.var_nodes = []
-        self.factors = []
+        self.factors: list[Factor] = []
         self.gbp_settings = gbp_settings
 
     def add_var_node(
@@ -99,7 +99,8 @@ class FactorGraph:
         include_priors: bool = True,
     ) -> None:
         energy_log = [self.energy()]
-        print(f"\nInitial Energy {energy_log[0]:.5f}")
+        # print(f"\nInitial Energy {energy_log[0]:.5f}")
+        print(f"\nInitial Energy {energy_log[0]}")
         i = 0
         count = 0
         not_converged = True
@@ -112,7 +113,8 @@ class FactorGraph:
             energy_log.append(self.energy(include_priors=include_priors))
             print(
                 f"Iter {i+1}  --- "
-                f"Energy {energy_log[-1]:.5f} --- "
+                # f"Energy {energy_log[-1]:.5f} --- "
+                f"Energy {energy_log[-1]} --- "
                 # f"Belief means: {self.belief_means().numpy()} --- "
                 # f"Robust factors: {[factor.meas_model.loss.robust() for factor in self.factors]}"
                 # f"Relins: {sum([(factor.iters_since_relin==0 and not factor.meas_model.linear) for factor in self.factors])}"
