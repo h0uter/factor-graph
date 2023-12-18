@@ -1,43 +1,6 @@
-from typing import Callable, List, Optional, Union
+from typing import Union
 
 import torch
-
-
-class Gaussian:
-    def __init__(
-        self,
-        dim: int,
-        eta: Optional[torch.Tensor] = None,
-        lam: Optional[torch.Tensor] = None,
-        type: torch.dtype = torch.float,
-    ):
-        self.dim = dim
-
-        if eta is not None and eta.shape == torch.Size([dim]):
-            self.eta = eta.type(type)
-        else:
-            self.eta = torch.zeros(dim, dtype=type)
-
-        if lam is not None and lam.shape == torch.Size([dim, dim]):
-            self.lam = lam.type(type)
-        else:
-            self.lam = torch.zeros([dim, dim], dtype=type)
-
-    def mean(self) -> torch.Tensor:
-        return torch.matmul(torch.inverse(self.lam), self.eta)
-
-    def cov(self) -> torch.Tensor:
-        return torch.inverse(self.lam)
-
-    def mean_and_cov(self) -> List[torch.Tensor]:
-        cov = self.cov()
-        mean = torch.matmul(cov, self.eta)
-        return [mean, cov]
-
-    def set_with_cov_form(self, mean: torch.Tensor, cov: torch.Tensor) -> None:
-        self.lam = torch.inverse(cov)
-        self.eta = self.lam @ mean
-
 
 """
     Defines squared loss functions that correspond to Gaussians.
@@ -108,20 +71,3 @@ class TukeyLoss(SquaredLoss):
             )
         else:
             self.effective_cov = self.cov.clone()
-
-
-class MeasModel:
-    def __init__(
-        self, meas_fn: Callable, jac_fn: Callable, loss: SquaredLoss, *args
-    ) -> None:
-        self._meas_fn = meas_fn
-        self._jac_fn = jac_fn
-        self.loss = loss
-        self.args = args
-        self.linear = True
-
-    def jac_fn(self, x: torch.Tensor) -> torch.Tensor:
-        return self._jac_fn(x, *self.args)
-
-    def meas_fn(self, x: torch.Tensor) -> torch.Tensor:
-        return self._meas_fn(x, *self.args)

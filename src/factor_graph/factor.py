@@ -2,7 +2,8 @@ from typing import List
 
 import torch
 
-from factor_graph.utility_functions import Gaussian, MeasModel
+from factor_graph.gaussian import Gaussian
+from factor_graph.MeasModel import MeasModel
 from factor_graph.variable_node import VariableNode
 
 

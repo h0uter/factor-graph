@@ -1,4 +1,4 @@
-from factor_graph.utility_functions import Gaussian
+from factor_graph.gaussian import Gaussian
 
 
 class VariableNode:

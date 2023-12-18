@@ -3,7 +3,8 @@ import torch
 
 from factor_graph.factor_graph import FactorGraph
 from factor_graph.gbp_settings import GBPSettings
-from factor_graph.utility_functions import MeasModel, SquaredLoss
+from factor_graph.loss import SquaredLoss
+from factor_graph.MeasModel import MeasModel
 
 """Create Custom factors (measurement models))"""
 
@@ -28,7 +29,7 @@ def goal_jac_fn(x: torch.Tensor):
 
 
 class DivergenceModel(MeasModel):
-    """Create model that preferst smoothness over jumps."""
+    """Create model that prefers divergence over smoothness."""
 
     def __init__(self, loss: SquaredLoss) -> None:
         MeasModel.__init__(self, goal_meas_fn, goal_jac_fn, loss)
@@ -36,7 +37,7 @@ class DivergenceModel(MeasModel):
 
 
 """Set parameters"""
-n_varnodes = 2
+n_varnodes = 4
 x_range = 10
 # n_measurements = 15
 
@@ -50,10 +51,10 @@ gbp_settings = GBPSettings(
 
 """Gaussian noise measurement model parameters:"""
 # set this one super high, cause we dont care about the prior
-prior_cov = torch.tensor([1000.0])
+prior_cov = torch.tensor([10.0])
 
 # set this one super low, because we want to convergence to our measurements
-smooth_cov = torch.tensor([0.1])
+smooth_cov = torch.tensor([0.0001])
 
 
 """Create factor graph"""
@@ -61,7 +62,6 @@ fg = FactorGraph(gbp_settings)
 
 xs = torch.linspace(0, x_range, n_varnodes).float().unsqueeze(0).T
 
-print(f"xs: {xs}")
 # initialize variable nodes. AKA With what resolution are we going to estimate the function?
 for i in range(n_varnodes):
     prior_mean = torch.tensor([50.0])
@@ -76,7 +76,7 @@ for i in range(n_varnodes - 1):
 
 fg.print(brief=True)
 
-"""Plot beliefs and measurements"""
+"""Plot initial beliefs"""
 
 # Beliefs are initialized to zero
 covs = torch.sqrt(torch.cat(fg.belief_covs()).flatten())
