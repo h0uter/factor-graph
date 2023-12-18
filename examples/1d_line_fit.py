@@ -5,7 +5,7 @@ import torch
 from factor_graph.factor_graph import FactorGraph
 from factor_graph.gbp_settings import GBPSettings
 from factor_graph.loss import SquaredLoss
-from factor_graph.MeasModel import MeasModel
+from factor_graph.meas_model import MeasModel
 
 """Create Custom factors (measurement models))"""
 

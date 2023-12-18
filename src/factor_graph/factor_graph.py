@@ -6,7 +6,7 @@ import torch
 from factor_graph.factor import Factor
 from factor_graph.gaussian import Gaussian
 from factor_graph.gbp_settings import GBPSettings
-from factor_graph.MeasModel import MeasModel
+from factor_graph.meas_model import MeasModel
 from factor_graph.variable_node import VariableNode
 
 
