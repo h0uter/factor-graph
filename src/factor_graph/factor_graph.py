@@ -3,40 +3,10 @@ from typing import List, Optional, Union
 
 import torch
 
+from factor_graph.factor import Factor
+from factor_graph.gbp_settings import GBPSettings
 from factor_graph.utility_functions import Gaussian, MeasModel
-
-"""
-    Defines classes for variable nodes, factor nodes and edges and factor graph.
-"""
-
-
-class GBPSettings:
-    def __init__(
-        self,
-        damping: float = 0.0,
-        beta: float = 0.1,
-        num_undamped_iters: int = 5,
-        min_linear_iters: int = 10,
-        dropout: float = 0.0,
-        reset_iters_since_relin: List[int] = [],
-        type: torch.dtype = torch.float,
-    ) -> None:
-        # Parameters for damping the eta component of the message
-        self.damping = damping
-        self.num_undamped_iters = num_undamped_iters  # Number of undamped iterations after relinearisation before damping is set to damping
-
-        self.dropout = dropout
-
-        # Parameters for just in time factor relinearisation
-        self.beta = beta  # Threshold absolute distance between linpoint and adjacent belief means for relinearisation.
-        self.min_linear_iters = min_linear_iters  # Minimum number of linear iterations before a factor is allowed to realinearise.
-        self.reset_iters_since_relin = reset_iters_since_relin
-
-    def get_damping(self, iters_since_relin: int) -> float:
-        if iters_since_relin > self.num_undamped_iters:
-            return self.damping
-        else:
-            return 0.0
+from factor_graph.variable_node import VariableNode
 
 
 class FactorGraph:
@@ -346,7 +316,9 @@ class FactorGraph:
                 print(
                     f"    prior covariance: diagonal sigma {torch.diag(var.prior.cov()).numpy()}"
                 )
+
         print(f"# Factors: {len(self.factors)}")
+
         if not brief:
             for i, factor in enumerate(self.factors):
                 if factor.meas_model.linear:
@@ -360,203 +332,5 @@ class FactorGraph:
                     f" diagonal sigma {torch.diag(factor.meas_model.loss.effective_cov).detach().numpy()}"
                 )
                 print(f"    measurement: {factor.measurement.numpy()}")
+
         print("\n")
-
-
-class VariableNode:
-    def __init__(self, id: int, dofs: int, properties: dict = {}) -> None:
-        self.variableID = id
-        self.properties = properties
-        self.dofs = dofs
-        self.adj_factors = []
-        self.belief = Gaussian(dofs)
-        self.prior = Gaussian(
-            dofs
-        )  # prior factor, implemented as part of variable node
-
-    def update_belief(self) -> None:
-        """Update local belief estimate by taking product of all incoming messages along all edges."""
-        self.belief.eta = self.prior.eta.clone()  # message from prior factor
-        self.belief.lam = self.prior.lam.clone()
-        for factor in self.adj_factors:  # messages from other adjacent variables
-            message_ix = factor.adj_vIDs.index(self.variableID)
-            self.belief.eta += factor.messages[message_ix].eta
-            self.belief.lam += factor.messages[message_ix].lam
-
-    def get_prior_energy(self) -> float:
-        energy = 0.0
-        if self.prior.lam[0, 0] != 0.0:
-            residual = self.belief.mean() - self.prior.mean()
-            energy += 0.5 * residual @ self.prior.lam @ residual
-        return energy
-
-
-class Factor:
-    def __init__(
-        self,
-        id: int,
-        adj_var_nodes: List[VariableNode],
-        measurement: torch.Tensor,
-        meas_model: MeasModel,
-        type: torch.dtype = torch.float,
-        properties: dict = {},
-    ) -> None:
-        self.factorID = id
-        self.properties = properties
-
-        self.adj_var_nodes = adj_var_nodes
-        self.dofs = sum([var.dofs for var in adj_var_nodes])
-        self.adj_vIDs = [var.variableID for var in adj_var_nodes]
-        self.messages = [Gaussian(var.dofs) for var in adj_var_nodes]
-
-        self.factor = Gaussian(self.dofs)
-        self.linpoint = torch.zeros(self.dofs, dtype=type)
-
-        self.measurement = measurement
-        self.meas_model = meas_model
-
-        # For smarter GBP implementations
-        self.iters_since_relin = 0
-
-        self.compute_factor()
-
-    def get_adj_means(self) -> torch.Tensor:
-        adj_belief_means = [var.belief.mean() for var in self.adj_var_nodes]
-        return torch.cat(adj_belief_means)
-
-    def get_residual(self, eval_point: torch.Tensor = None) -> torch.Tensor:
-        """Compute the residual vector."""
-        if eval_point is None:
-            eval_point = self.get_adj_means()
-        return self.meas_model.meas_fn(eval_point) - self.measurement
-
-    def get_energy(self, eval_point: torch.Tensor = None) -> float:
-        """Computes the squared error using the appropriate loss function."""
-        residual = self.get_residual(eval_point)
-        # print("adj_belifes", self.get_adj_means())
-        # print("pred and meas", self.meas_model.meas_fn(self.get_adj_means()), self.measurement)
-        # print("residual", self.get_residual(), self.meas_model.loss.effective_cov)
-        return (
-            0.5
-            * residual
-            @ torch.inverse(self.meas_model.loss.effective_cov)
-            @ residual
-        )
-
-    def robust(self) -> bool:
-        return self.meas_model.loss.robust()
-
-    def compute_factor(self) -> None:
-        """
-        Compute the factor at current adjacente beliefs using robust.
-        If measurement model is linear then factor will always be the same regardless of linearisation point.
-        """
-        self.linpoint = self.get_adj_means()
-        J = self.meas_model.jac_fn(self.linpoint)
-        pred_measurement = self.meas_model.meas_fn(self.linpoint)
-        self.meas_model.loss.get_effective_cov(pred_measurement - self.measurement)
-        effective_lam = torch.inverse(self.meas_model.loss.effective_cov)
-        self.factor.lam = J.T @ effective_lam @ J
-        self.factor.eta = (
-            (J.T @ effective_lam)
-            @ (J @ self.linpoint + self.measurement - pred_measurement)
-        ).flatten()
-        self.iters_since_relin = 0
-
-    def robustify_loss(self) -> None:
-        """
-        Rescale the variance of the noise in the Gaussian measurement model if necessary and update the factor
-        correspondingly.
-        """
-        old_effective_cov = self.meas_model.loss.effective_cov[0, 0]
-        self.meas_model.loss.get_effective_cov(self.get_residual())
-        self.factor.eta *= old_effective_cov / self.meas_model.loss.effective_cov[0, 0]
-        self.factor.lam *= old_effective_cov / self.meas_model.loss.effective_cov[0, 0]
-
-    def compute_messages(self, damping: float = 0.0) -> None:
-        """Compute all outgoing messages from the factor."""
-        messages_eta, messages_lam = [], []
-
-        start_dim = 0
-        for v in range(len(self.adj_vIDs)):
-            eta_factor, lam_factor = (
-                self.factor.eta.clone().double(),
-                self.factor.lam.clone().double(),
-            )
-
-            # Take product of factor with incoming messages
-            start = 0
-            for var in range(len(self.adj_vIDs)):
-                if var != v:
-                    var_dofs = self.adj_var_nodes[var].dofs
-                    eta_factor[start : start + var_dofs] += (
-                        self.adj_var_nodes[var].belief.eta - self.messages[var].eta
-                    )
-                    lam_factor[start : start + var_dofs, start : start + var_dofs] += (
-                        self.adj_var_nodes[var].belief.lam - self.messages[var].lam
-                    )
-                start += self.adj_var_nodes[var].dofs
-
-            # Divide up parameters of distribution
-            mess_dofs = self.adj_var_nodes[v].dofs
-            eo = eta_factor[start_dim : start_dim + mess_dofs]
-            eno = torch.cat(
-                (eta_factor[:start_dim], eta_factor[start_dim + mess_dofs :])
-            )
-
-            loo = lam_factor[
-                start_dim : start_dim + mess_dofs, start_dim : start_dim + mess_dofs
-            ]
-            lono = torch.cat(
-                (
-                    lam_factor[start_dim : start_dim + mess_dofs, :start_dim],
-                    lam_factor[
-                        start_dim : start_dim + mess_dofs, start_dim + mess_dofs :
-                    ],
-                ),
-                dim=1,
-            )
-            lnoo = torch.cat(
-                (
-                    lam_factor[:start_dim, start_dim : start_dim + mess_dofs],
-                    lam_factor[
-                        start_dim + mess_dofs :, start_dim : start_dim + mess_dofs
-                    ],
-                ),
-                dim=0,
-            )
-            lnono = torch.cat(
-                (
-                    torch.cat(
-                        (
-                            lam_factor[:start_dim, :start_dim],
-                            lam_factor[:start_dim, start_dim + mess_dofs :],
-                        ),
-                        dim=1,
-                    ),
-                    torch.cat(
-                        (
-                            lam_factor[start_dim + mess_dofs :, :start_dim],
-                            lam_factor[
-                                start_dim + mess_dofs :, start_dim + mess_dofs :
-                            ],
-                        ),
-                        dim=1,
-                    ),
-                ),
-                dim=0,
-            )
-
-            new_message_lam = loo - lono @ torch.inverse(lnono) @ lnoo
-            new_message_eta = eo - lono @ torch.inverse(lnono) @ eno
-            messages_eta.append(
-                (1 - damping) * new_message_eta + damping * self.messages[v].eta
-            )
-            messages_lam.append(
-                (1 - damping) * new_message_lam + damping * self.messages[v].lam
-            )
-            start_dim += self.adj_var_nodes[v].dofs
-
-        for v in range(len(self.adj_vIDs)):
-            self.messages[v].lam = messages_lam[v]
-            self.messages[v].eta = messages_eta[v]

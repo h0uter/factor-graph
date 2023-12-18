@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from factor_graph.gbp import FactorGraph, GBPSettings
+from factor_graph.factor_graph import FactorGraph
+from factor_graph.gbp_settings import GBPSettings
 from factor_graph.utility_functions import MeasModel, SquaredLoss
 
 """Create Custom factors (measurement models))"""
