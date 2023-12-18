@@ -5,10 +5,12 @@ import torch
 from factor_graph.gbp import FactorGraph, GBPSettings
 from factor_graph.utility_functions import MeasModel, SquaredLoss
 
-"""Create Custom factors"""
+"""Create Custom factors (measurement models))"""
 
 
 def height_meas_fn(x: torch.Tensor, gamma: torch.Tensor):
+    """height on a position.
+    gamma = height"""
     J = torch.tensor([[1 - gamma, gamma]])
     return J @ x
 
@@ -18,6 +20,8 @@ def height_jac_fn(x: torch.Tensor, gamma: torch.Tensor):
 
 
 class HeightMeasurementModel(MeasModel):
+    """Create a measurement model for the height."""
+
     def __init__(self, loss: SquaredLoss, gamma: torch.Tensor) -> None:
         MeasModel.__init__(self, height_meas_fn, height_jac_fn, loss, gamma)
         self.linear = True
@@ -32,13 +36,15 @@ def smooth_jac_fn(x: torch.Tensor):
 
 
 class SmoothingModel(MeasModel):
+    """Create model that preferst smoothness over jumps."""
+
     def __init__(self, loss: SquaredLoss) -> None:
         MeasModel.__init__(self, smooth_meas_fn, smooth_jac_fn, loss)
         self.linear = True
 
 
 """Set parameters"""
-n_varnodes = 20
+n_varnodes = 10
 x_range = 10
 n_measurements = 15
 
@@ -72,14 +78,18 @@ plt.show()
 fg = FactorGraph(gbp_settings)
 
 xs = torch.linspace(0, x_range, n_varnodes).float().unsqueeze(0).T
+
+# initialize variable nodes. AKA With what resolution are we going to estimate the function?
 for i in range(n_varnodes):
     fg.add_var_node(1, torch.tensor([0.0]), prior_cov)
 
+# add smoothness factors between adjacent nodes
 for i in range(n_varnodes - 1):
     fg.add_factor(
         [i, i + 1], torch.tensor([0.0]), SmoothingModel(SquaredLoss(1, smooth_cov))
     )
 
+# do height measurements.
 for i in range(n_measurements):
     ix2 = np.argmax(xs > meas_x[i])
     ix1 = ix2 - 1

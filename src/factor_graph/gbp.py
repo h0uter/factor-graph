@@ -173,9 +173,11 @@ class FactorGraph:
                     ]
                 )
                 energy += f.get_energy(local_eval_point)
+
         if include_priors:
             prior_energy = sum([var.get_prior_energy() for var in self.var_nodes])
             energy += prior_energy
+
         return energy
 
     def get_joint_dim(self) -> int:
