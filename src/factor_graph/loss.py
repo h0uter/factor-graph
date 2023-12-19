@@ -14,7 +14,7 @@ class SquaredLoss:
         dofs: dofs of the measurement
         cov: diagonal elements of covariance matrix
         """
-        assert diag_cov.shape == torch.Size([dofs])
+        assert diag_cov.shape == torch.Size([dofs]), f"diag_cov.shape: {diag_cov.shape}"
         mat = torch.zeros(dofs, dofs, dtype=diag_cov.dtype)
         mat[range(dofs), range(dofs)] = diag_cov
         self.cov = mat

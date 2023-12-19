@@ -2,10 +2,6 @@ from typing import List
 
 import torch
 
-"""
-    Defines classes for variable nodes, factor nodes and edges and factor graph.
-"""
-
 
 class GBPSettings:
     def __init__(
