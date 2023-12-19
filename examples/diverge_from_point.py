@@ -82,18 +82,6 @@ class DivergenceModel(MeasModel):
         self.linear = True
 
 
-"""Set parameters"""
-n_varnodes = 2
-x_range = 10
-
-gbp_settings = GBPSettings(
-    damping=0.1,
-    beta=0.01,
-    num_undamped_iters=1,
-    min_linear_iters=1,
-    dropout=0.0,
-)
-
 """Gaussian noise measurement model parameters:"""
 # set this one super high, cause we dont care about the prior
 prior_cov = torch.tensor([100.0, 100.0])
@@ -107,6 +95,18 @@ prior_cov = torch.tensor([100.0, 100.0])
 smooth_cov = torch.tensor([0.000001])
 
 
+"""Set parameters"""
+n_varnodes = 3
+x_range = 10
+
+gbp_settings = GBPSettings(
+    damping=0.1,
+    beta=0.01,
+    num_undamped_iters=1,
+    min_linear_iters=1,
+    dropout=0.0,
+)
+
 """Create factor graph"""
 fg = FactorGraph(gbp_settings)
 
@@ -114,18 +114,29 @@ xs = torch.linspace(0, x_range, n_varnodes).float().unsqueeze(0).T
 
 # initialize variable nodes. AKA With what resolution are we going to estimate the function?
 # for i in range(n_varnodes):
-prior_mean = torch.tensor([5.0, 51.0])
+prior_mean = torch.tensor([4.0, 51.0])
 fg.add_var_node(2, prior_mean, prior_cov)
-prior_mean = torch.tensor([5.0, 49.0])
+prior_mean = torch.tensor([4.0, 50.0])
+fg.add_var_node(2, prior_mean, prior_cov)
+prior_mean = torch.tensor([6.0, 49.0])
 fg.add_var_node(2, prior_mean, prior_cov)
 
-# add smoothness factors between adjacent nodes
-for i in range(n_varnodes - 1):
+factors_to_add = [[0, 1], [1, 2], [2, 0]]
+for connection in factors_to_add:
     fg.add_factor(
-        [i, i + 1],
+        connection,
         torch.tensor([0.1]),
         DivergenceModel(SquaredLoss(1, smooth_cov)),
     )
+
+
+# add smoothness factors between adjacent nodes
+# for i in range(n_varnodes - 1):
+#     fg.add_factor(
+#         [i, i + 1],
+#         torch.tensor([0.1]),
+#         DivergenceModel(SquaredLoss(1, smooth_cov)),
+#     )
 
 
 fg.print(brief=True)
