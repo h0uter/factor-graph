@@ -14,7 +14,7 @@ from factor_graph.meas_model import MeasModel
 
 # TODO: make everything 2 dimensional
 
-R_D = 10
+R_D = 100
 
 
 def get_jacobian() -> (
@@ -96,7 +96,7 @@ gbp_settings = GBPSettings(
 
 """Gaussian noise measurement model parameters:"""
 # set this one super high, cause we dont care about the prior
-prior_cov = torch.tensor([10.0, 10.0])
+prior_cov = torch.tensor([100.0, 100.0])
 # prior_cov = torch.tensor([10.0, 10.0, 10.0, 10.0])
 
 # set this one super low, because we want to convergence to our measurements
@@ -104,7 +104,7 @@ prior_cov = torch.tensor([10.0, 10.0])
 # smooth_cov = torch.tensor([0.0001, 0.0001, 0.0001, 0.0001])
 # smooth_cov = torch.tensor([0.0001, 0.0001, 0.0001])
 # smooth_cov = torch.tensor([0.0001, 0.0001])
-smooth_cov = torch.tensor([0.0001])
+smooth_cov = torch.tensor([0.000001])
 
 
 """Create factor graph"""
@@ -114,9 +114,9 @@ xs = torch.linspace(0, x_range, n_varnodes).float().unsqueeze(0).T
 
 # initialize variable nodes. AKA With what resolution are we going to estimate the function?
 # for i in range(n_varnodes):
-prior_mean = torch.tensor([4.0, 51.0])
+prior_mean = torch.tensor([5.0, 51.0])
 fg.add_var_node(2, prior_mean, prior_cov)
-prior_mean = torch.tensor([5.0, 50.0])
+prior_mean = torch.tensor([5.0, 49.0])
 fg.add_var_node(2, prior_mean, prior_cov)
 
 # add smoothness factors between adjacent nodes
@@ -138,9 +138,9 @@ print(f"{fg.belief_means()=} and {xs=}")
 # plt.errorbar(xs, fg.belief_means(), yerr=covs, fmt="o", color="C0", label="Beliefs")
 list_of_means = fg.belief_means()
 
-xss = list_of_means[::2]  # Select elements at even indices
-yss = list_of_means[1::2]  # Select elements at odd indices
-plt.errorbar(xss, yss, fmt="o", color="C0", label="Beliefs")
+xss_pre = list_of_means[::2]  # Select elements at even indices
+yss_pre = list_of_means[1::2]  # Select elements at odd indices
+plt.errorbar(xss_pre, yss_pre, fmt="o", color="red", label="Beliefs Pre optimization")
 plt.legend()
 plt.show()
 
@@ -154,7 +154,9 @@ list_of_means = fg.belief_means()
 
 xss = list_of_means[::2]  # Select elements at even indices
 yss = list_of_means[1::2]  # Select elements at odd indices
-plt.errorbar(xss, yss, fmt="o", color="C0", label="Beliefs")
+plt.errorbar(xss, yss, fmt="o", color="C0", label="Optimized Beliefs")
+plt.errorbar(xss_pre, yss_pre, fmt="o", color="red", label="Beliefs Pre optimization")
+
 # plt.errorbar(xs, fg.belief_means(), yerr=covs, fmt="o", color="C0", label="Beliefs")
 plt.legend()
 plt.show()
