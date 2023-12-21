@@ -85,13 +85,8 @@ class DivergenceModel(MeasModel):
 """Gaussian noise measurement model parameters:"""
 # set this one super high, cause we dont care about the prior
 prior_cov = torch.tensor([100.0, 100.0])
-# prior_cov = torch.tensor([10.0, 10.0, 10.0, 10.0])
 
 # set this one super low, because we want to convergence to our measurements
-# smooth_cov = torch.tensor([0.0001, 0.0001, 0.0001, 0.0001])
-# smooth_cov = torch.tensor([0.0001, 0.0001, 0.0001, 0.0001])
-# smooth_cov = torch.tensor([0.0001, 0.0001, 0.0001])
-# smooth_cov = torch.tensor([0.0001, 0.0001])
 smooth_cov = torch.tensor([0.000001])
 
 
@@ -146,11 +141,11 @@ fg.print(brief=True)
 # Beliefs are initialized to zero
 covs = torch.sqrt(torch.cat(fg.belief_covs()).flatten())
 print(f"{fg.belief_means()=} and {xs=}")
-# plt.errorbar(xs, fg.belief_means(), yerr=covs, fmt="o", color="C0", label="Beliefs")
-list_of_means = fg.belief_means()
 
+list_of_means = fg.belief_means()
 xss_pre = list_of_means[::2]  # Select elements at even indices
 yss_pre = list_of_means[1::2]  # Select elements at odd indices
+
 plt.errorbar(xss_pre, yss_pre, fmt="o", color="red", label="Beliefs Pre optimization")
 plt.legend()
 plt.show()
@@ -168,6 +163,5 @@ yss = list_of_means[1::2]  # Select elements at odd indices
 plt.errorbar(xss, yss, fmt="o", color="C0", label="Optimized Beliefs")
 plt.errorbar(xss_pre, yss_pre, fmt="o", color="red", label="Beliefs Pre optimization")
 
-# plt.errorbar(xs, fg.belief_means(), yerr=covs, fmt="o", color="C0", label="Beliefs")
 plt.legend()
 plt.show()
