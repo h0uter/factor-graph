@@ -3,7 +3,7 @@ from typing import Callable
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from sympy import Matrix, diff, lambdify, sqrt, symbols
+from sympy import Matrix, lambdify, sqrt, symbols
 
 from factor_graph.factor_graph import FactorGraph
 from factor_graph.gbp_settings import GBPSettings
