@@ -16,7 +16,7 @@ library implementing barebones gbp for use with factor graphs. Based on work
 -> done see `examples/diverge_from_line.py`
 
 ### MVP 2
-- now do it in 2d
+- [x] now do it in 2d
 
 ### mvp 3 create a gui for it.
 - [ ] make an event loop
@@ -24,7 +24,9 @@ library implementing barebones gbp for use with factor graphs. Based on work
 
 ### Further mvps:
 - [ ] implement MPC.
-- [ ] map landscape for mapping discrete actions.
+- [ ] map landscape for mapping discrete action methods.
 - [ ] make plan for how to operate over a navigation graph instead of over a continuous space.
 - [ ] go from goal layer to task layer.
-- [ ]
+- [ ] mpc is also just pushing nodes apart that lay too close together.
+- [ ] information layer.
+- [ ] so

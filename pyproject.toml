@@ -11,6 +11,7 @@ packages = [{ include = "factor_graph", from = "src" }]
 python = "^3.11"
 torch = "^2.1.2"
 matplotlib = "^3.8.2"
+nicegui = "^1.4.6"
 
 
 [build-system]
